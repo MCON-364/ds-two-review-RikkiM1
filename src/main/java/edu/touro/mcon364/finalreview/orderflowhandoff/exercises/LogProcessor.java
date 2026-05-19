@@ -4,6 +4,8 @@ import edu.touro.mcon364.finalreview.model.LogLevel;
 import edu.touro.mcon364.finalreview.model.LogMessage;
 
 import java.util.Map;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * LogProcessor.
@@ -38,7 +40,7 @@ import java.util.Map;
  * - The class must behave correctly when multiple threads interact with it.
  *
  * Questions to think about before coding:
- * - Where should submitted messages wait before a worker processes them?
+ * - Where should submited messages wait before a worker processes them?
  * - What behavior do we need from that structure: newest first, oldest first,
  *   priority order, or something else?
  * - Which state is shared by multiple threads?
@@ -50,8 +52,12 @@ import java.util.Map;
  *   the processor's internal state?
  */
 public class LogProcessor {
-
-    /*
+BlockingQueue<LogMessage> queue = new LinkedBlockingQueue<>();
+ExecutorService pool;
+private final AtomicInteger totalProcessed = new AtomicInteger(0);
+private final ConcurrentHashMap<LogLevel, AtomicInteger> countsByLevel = new ConcurrentHashMap<>();
+boolean running= false;
+/*
      * Decide what fields this class needs.
      *
      * Think about:
@@ -65,15 +71,30 @@ public class LogProcessor {
     /**
      * Accept one message for processing.
      */
+
     public void submit(LogMessage message) {
         // TODO: implement
+
+        queue.offer(message);
     }
 
     /**
      * Start the requested number of background workers.
+     *  start(workerCount) starts exactly workerCount background workers.
+     *  * - workerCount must be positive.
+     *  * - workers should keep processing while the processor is still accepting work
+     *  *   or while there is still unprocessed work waiting.
+     *  * -
      */
     public void start(int workerCount) {
         // TODO: implement
+        if(workerCount <= 0){
+            throw new IllegalArgumentException();
+        }
+      for (int i=0; i<workerCount; i++){
+          Thread t= new Thread(this::workerLoop);
+          t.start();
+      }
     }
 
     /**
@@ -82,8 +103,11 @@ public class LogProcessor {
      * You may keep this helper method, rename it, or replace it with another
      * private helper if your design is clearer that way.
      */
-    private void workerLoop() {
+    public void workerLoop() {
         // TODO: implement
+        //pool.submit(()->
+          //      message.stream()
+    //    )
     }
 
     /**
@@ -91,6 +115,9 @@ public class LogProcessor {
      */
     private void process(LogMessage message) {
         // TODO: implement
+        pool.submit (()->
+                queue.poll());
+        totalProcessed.getAndIncrement();
     }
 
     /**
@@ -98,14 +125,16 @@ public class LogProcessor {
      */
     public void stop() throws InterruptedException {
         // TODO: implement
-    }
+        pool.shutdown();
+        pool.awaitTermination(10, TimeUnit.NANOSECONDS);
+            }
 
     /**
      * Return the number of messages processed so far.
      */
     public int getTotalProcessed() {
         // TODO: implement
-        return 0;
+        return totalProcessed.get();
     }
 
     /**
