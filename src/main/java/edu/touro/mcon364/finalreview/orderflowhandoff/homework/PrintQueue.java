@@ -1,7 +1,9 @@
 package edu.touro.mcon364.finalreview.orderflowhandoff.homework;
 
+import edu.touro.mcon364.finalreview.model.Action;
 import edu.touro.mcon364.finalreview.model.PrintJob;
 
+import java.util.ArrayDeque;
 import java.util.Optional;
 
 /**
@@ -39,6 +41,7 @@ import java.util.Optional;
 public class PrintQueue {
 
     // TODO: choose the field or fields needed to remember waiting print jobs
+    ArrayDeque<PrintJob> waiting = new ArrayDeque<>();
 
     /**
      * Records a new print job as waiting.
@@ -47,6 +50,7 @@ public class PrintQueue {
      */
     public void submit(PrintJob job) {
         // TODO: implement
+        waiting.addLast(job);
     }
 
     /**
@@ -56,7 +60,10 @@ public class PrintQueue {
      */
     public Optional<PrintJob> printNext() {
         // TODO: implement
-        return Optional.empty();
+        if (waiting.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(waiting.removeFirst());
     }
 
     /**
@@ -66,7 +73,10 @@ public class PrintQueue {
      */
     public Optional<PrintJob> peekNext() {
         // TODO: implement
-        return Optional.empty();
+        if (waiting.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(waiting.peek());
     }
 
     /**
@@ -74,6 +84,6 @@ public class PrintQueue {
      */
     public int queuedJobs() {
         // TODO: implement
-        return 0;
+        return waiting.size();
     }
 }

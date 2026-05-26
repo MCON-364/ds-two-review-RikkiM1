@@ -1,8 +1,11 @@
 package edu.touro.mcon364.finalreview.orderflowhandoff.homework;
 
+import edu.touro.mcon364.finalreview.model.LogMessage;
 import edu.touro.mcon364.finalreview.model.SensorReading;
 
 import java.util.DoubleSummaryStatistics;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Homework 2 — Sensor reading processor.
@@ -42,7 +45,7 @@ import java.util.DoubleSummaryStatistics;
  * - If several workers update the same stats, how will those updates stay correct?
  */
 public class SensorProcessor {
-
+    BlockingQueue<SensorReading> submitted = new LinkedBlockingQueue<>();
     /**
      * Accept one sensor reading for processing.
      *
@@ -50,6 +53,7 @@ public class SensorProcessor {
      */
     public void submit(SensorReading reading) {
         // TODO: decide where submitted readings should be stored
+        submitted.offer(reading);
     }
 
     /**
