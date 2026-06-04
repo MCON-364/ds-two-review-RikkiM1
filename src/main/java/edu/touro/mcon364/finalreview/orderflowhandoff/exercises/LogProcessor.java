@@ -55,8 +55,8 @@ public class LogProcessor {
 BlockingQueue<LogMessage> queue = new LinkedBlockingQueue<>();
 ExecutorService pool;
 private final AtomicInteger totalProcessed = new AtomicInteger(0);
-private final ConcurrentHashMap<LogLevel, AtomicInteger> countsByLevel = new ConcurrentHashMap<>();
-boolean running= false;
+private final ConcurrentHashMap<LogLevel, Integer> countsByLevel = new ConcurrentHashMap<>();
+private volatile boolean running= false;
 /*
      * Decide what fields this class needs.
      *
@@ -74,10 +74,10 @@ boolean running= false;
 
     public void submit(LogMessage message) {
         // TODO: implement
-
-        queue.offer(message);
+        if (running) {
+            queue.offer(message);
+        }
     }
-
     /**
      * Start the requested number of background workers.
      *  start(workerCount) starts exactly workerCount background workers.
@@ -91,9 +91,11 @@ boolean running= false;
         if(workerCount <= 0){
             throw new IllegalArgumentException();
         }
+        running= true;
+     //create an executor thread pool
+        pool= Executors.newFixedThreadPool(workerCount);
       for (int i=0; i<workerCount; i++){
-          Thread t= new Thread(this::workerLoop);
-          t.start();
+         pool.submit(this::workerLoop);
       }
     }
 
@@ -104,10 +106,15 @@ boolean running= false;
      * private helper if your design is clearer that way.
      */
     public void workerLoop() {
-        // TODO: implement
-        //pool.submit(()->
-          //      message.stream()
-    //    )
+
+        try {
+            while (running || !queue.isEmpty()) {
+                process(queue.take());
+            }
+        }
+        catch(InterruptedException e){
+            Thread.currentThread().interrupt();
+        }
     }
 
     /**
@@ -115,9 +122,10 @@ boolean running= false;
      */
     private void process(LogMessage message) {
         // TODO: implement
-        pool.submit (()->
-                queue.poll());
-        totalProcessed.getAndIncrement();
+        totalProcessed.incrementAndGet();
+        //update count by level atomically
+       countsByLevel.merge(message.level(), 1, Integer::sum);
+
     }
 
     /**
@@ -125,8 +133,16 @@ boolean running= false;
      */
     public void stop() throws InterruptedException {
         // TODO: implement
+        running= false;
+        if(pool == null){
+            return;
+        }
         pool.shutdown();
         pool.awaitTermination(10, TimeUnit.NANOSECONDS);
+        LogMessage msg;
+        //make sure every message is processed
+        while((msg = queue.poll()) !=null)
+            process(msg);
             }
 
     /**
@@ -142,6 +158,6 @@ boolean running= false;
      */
     public Map<LogLevel, Integer> getCountsByLevel() {
         // TODO: implement
-        return Map.of();
+        return Map.copyOf(countsByLevel);
     }
 }

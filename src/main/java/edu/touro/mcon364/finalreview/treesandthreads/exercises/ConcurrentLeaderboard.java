@@ -49,6 +49,8 @@ public class ConcurrentLeaderboard {
      */
     public void submitScore(ScoreEntry entry) {
        //TODO
+        leaderboard.add(entry);
+        totalSubmissions.incrementAndGet();
     }
 
     /**
@@ -59,7 +61,9 @@ public class ConcurrentLeaderboard {
      */
     public List<ScoreEntry> getTopN(int n) {
         // TODO
-        return List.of();
+        return leaderboard.stream()   // stream the sorted set
+                .limit(n)            // take the top n entries
+                .toList();           // collect as immutable list
     }
 
     /**
@@ -67,7 +71,8 @@ public class ConcurrentLeaderboard {
      */
     public int getTotalSubmissions() {
         // TODO
-        return 0;
+     return totalSubmissions.get();
+
     }
 
     /**
@@ -79,8 +84,45 @@ public class ConcurrentLeaderboard {
      * @param players    list of player names
      * @param scoresEach number of random scores each player submits
      */
-    public void runSimulation(List<String> players, int scoresEach)
-            throws InterruptedException {
+    public void runSimulation(List<String> players, int scoresEach) throws InterruptedException {
+
+        // Create a thread pool with as many threads as there are players.
+        // Each thread will handle one player's score submissions.
+        ExecutorService pool = Executors.newFixedThreadPool(players.size());
+        // Random instance for generating score values. Shared across threads but not a problem here
+        // because each submission is independent and Random methods are thread-safe for practical purposes.
+         Random rand = new Random();
+
+        // Submit a task for each player to the thread pool.
+        for (String player : players) {
+        pool.submit(() -> {
+            // Each player submits 'scoresEach' scores
+            for (int i = 0; i < scoresEach; i++) {
+                int score = rand.nextInt(1000);
+
+                // Create a new ScoreEntry with player name, score, and current timestamp
+                // Timestamp ensures uniqueness even if two scores are the same
+                ScoreEntry entry = new ScoreEntry(
+                        player,
+                        score,
+                        System.currentTimeMillis()
+                );
+
+                // Submit the score entry to the leaderboard.
+                // Thread-safe because submitScore uses ConcurrentSkipListSet and AtomicInteger.
+                submitScore(entry);
+            }
+        });
+    }
+
+pool.shutdown();
+
+        // Wait for all tasks to finish, up to 1 minute.
+        // If tasks are still running after 1 minute, throw an exception.
+        // This ensures the simulation completes or fails fast.
+    if (!pool.awaitTermination(1, TimeUnit.MINUTES)) {
+        throw new RuntimeException("Simulation timed out!");
+    }
 
     }
 }

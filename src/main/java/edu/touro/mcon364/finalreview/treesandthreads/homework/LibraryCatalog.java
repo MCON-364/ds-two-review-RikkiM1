@@ -36,7 +36,11 @@ public class LibraryCatalog {
 
     public LibraryCatalog(List<Book> books) {
         // TODO: validate non-null, store a defensive copy
-        this.books = List.of();
+        if (books == null)
+            throw new NullPointerException();
+
+        this.books = new ArrayList<>(books);
+
     }
 
     /**
@@ -44,10 +48,18 @@ public class LibraryCatalog {
      * If two books share a title, keep only one (your choice which).
      *
      */
-    public TreeMap<String, Book> buildTitleIndex() {
-        // TODO
-        return new TreeMap<>();
-    }
+
+        public TreeMap<String, Book> buildTitleIndex() {
+            // Stream the books list
+            return books.stream()
+                    // Collect into a Map keyed by book title
+                    .collect(Collectors.toMap(
+                            Book::title,          // Key mapper: use book title
+                            b -> b,                  // Value mapper: the book itself
+                            (existing, replacement) -> existing, // Merge function: keep first book if duplicate title
+                            TreeMap::new             // Supplier: directly create a TreeMap to maintain sorted order
+                    ));
+        }
 
     /**
      * Returns a TreeMap grouping books by author; each author maps to a
@@ -55,7 +67,18 @@ public class LibraryCatalog {
      */
     public TreeMap<String, TreeSet<Book>> buildAuthorIndex() {
         // TODO
-        return new TreeMap<>();
+        return books.stream()
+                .collect(Collectors.groupingBy(
+                        Book::author, // group by author
+                        //Creates a TreeMap instead of the default HashMap, so authors are sorted alphabetically.
+                        TreeMap::new,    // use a TreeMap for sorted authors
+                        //Specifies what collection each group should contain.
+                        Collectors.toCollection(
+                                () -> new TreeSet<>(
+                                        Comparator.comparing(Book::title)
+                                )
+                        )
+                ));
     }
 
     /**
@@ -63,8 +86,10 @@ public class LibraryCatalog {
      *
      */
     public List<Book> getBooksPublishedBefore(int year) {
-        // TODO
-        return List.of();
+        return books.stream()
+                .filter(book -> book.year() < year)
+                .sorted(Comparator.comparing(Book::title))
+                .toList();
     }
 
     /**
@@ -72,8 +97,17 @@ public class LibraryCatalog {
      *
      */
     public List<String> getAuthorsWithMoreThan(int n) {
-        // TODO
-        return List.of();
+        return books.stream()
+                // Group books by author and count how many each has
+                .collect(Collectors.groupingBy(
+                        Book::author,  // key: author name
+                        Collectors.counting() // value: number of books
+                ))
+                .entrySet().stream() // stream the Map entries
+                .filter(entry -> entry.getValue() > n) // keep authors with more than n books
+                .map(Map.Entry::getKey) // extract the author names
+                .sorted() // sort alphabetically
+                .toList(); // collect into an immutable list
     }
 
     /**
@@ -81,8 +115,10 @@ public class LibraryCatalog {
      *
      */
     public List<Book> findByTitlePrefix(String prefix) {
-        // TODO
-        return List.of();
+        return books.stream()
+                .filter(book -> book.title().startsWith(prefix))  // keep only titles with the prefix
+                .sorted(Comparator.comparing(Book::title))       // sort alphabetically by title
+                .toList();                                          // collect as immutable list
     }
 }
 

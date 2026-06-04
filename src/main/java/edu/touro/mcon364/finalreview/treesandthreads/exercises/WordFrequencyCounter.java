@@ -44,7 +44,12 @@ public class WordFrequencyCounter {
     public WordFrequencyCounter(List<String> words) {
         // TODO: validate that words is not null
         // TODO: store a defensive copy so outside code cannot mutate this object
-        this.words = List.of();
+
+       if (words == null)
+           throw new NullPointerException();
+
+      this.words = new ArrayList<>(words);
+
     }
 
     /**
@@ -54,7 +59,18 @@ public class WordFrequencyCounter {
      */
     public TreeMap<String, Long> buildFrequencyMap() {
         // TODO
-        return new TreeMap<>();
+        return words.stream()
+                .collect(Collectors.groupingBy( //It consumes the stream and creates a result (in our case, a TreeMap<String, Long>).
+                        //groupingBy takes three arguments here:
+                        words -> words,
+                        //word -> word → the key function
+                        TreeMap::new,
+                        //TreeMap::new → map supplier. Tells Java, “Store the results in a TreeMap instead of a HashMap.”
+                        //Why? Because TreeMap keeps the keys sorted alphabetically, which is exactly what the assignment asks.
+                        Collectors.counting()
+                        //downstream collector
+                        //For each key (word), count how many times it appears.
+                ));
     }
 
     /**
@@ -65,7 +81,23 @@ public class WordFrequencyCounter {
      */
     public List<String> getTopN(int n) {
         // TODO
-        return List.of();
+        // * Stream explanation:
+        //     * - entrySet().stream() → process key-value pairs
+        //     * - sorted by value descending → highest frequency first
+        //     * - limit(n) → take only the top n words
+        //     * - map(Map.Entry::getKey) → return just the word (key)
+        //     * - toList() → collect results into a List
+        //     *
+        return buildFrequencyMap()
+                .entrySet()
+                .stream()
+                .sorted(
+                        Comparator.comparing(Map.Entry<String, Long>::getValue)
+                                .reversed()
+                )
+                .limit(n)
+                .map(Map.Entry::getKey)
+                .toList();
     }
 
     /**
@@ -77,12 +109,24 @@ public class WordFrequencyCounter {
      */
     public List<String> getWordsStartingWith(char prefix) {
         // TODO
-        return List.of();
+        //.keySet() is a method on a Map (like TreeMap, HashMap, etc.)
+        // that returns all the keys in the map as a Set.
+        return buildFrequencyMap()
+                .keySet()
+                .stream()
+                .filter(word -> word.charAt(0) ==prefix)
+                .sorted()
+                .collect(Collectors.toList());
     }
 
     /**
      * Finds the most frequent word in the alphabetical range [from, to] inclusive.
      *
+     *  * TreeMap explanation:
+     *      * - subMap(from, true, to, true) → returns a view of the map limited to the range
+     *      * - entrySet().stream() → process entries in that submap
+     *      * - max(Comparator.comparing(Map.Entry::getValue)) → find entry with highest count
+     *      * - map(Map.Entry::getKey) → extract the word (key) from the entry
      *
      * @param from lower bound word (inclusive)
      * @param to   upper bound word (inclusive)
@@ -90,6 +134,11 @@ public class WordFrequencyCounter {
      */
     public Optional<String> getMostFrequentInRange(String from, String to) {
         // TODO
-        return Optional.empty();
+        return buildFrequencyMap()//Call the method we wrote earlier to get a TreeMap<String, Long>.
+                .subMap(from, true, to, true) // slice map to alphabetical range
+                .entrySet()//Converts the subMap into a set of key-value pairs (
+                .stream()//Turns the entry set into a stream
+                .max(Comparator.comparing(Map.Entry::getValue))//Finds the entry with the largest value
+                .map(Map.Entry::getKey); // extract the word and Converts the Optional of the entry into an Optional of the key (the word).
     }
 }
